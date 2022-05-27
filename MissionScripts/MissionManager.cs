@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using MoerusaGameManager;
 
+//此Script在Player身上
 public class MissionManager : MonoBehaviour
 {
     private PlayerManager playerManager;
