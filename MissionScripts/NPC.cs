@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using MoerusaGameManager;
 using UnityEngine.UI;
+
+//掛在NPC身上
 public class NPC : MonoBehaviour
 {   
     [SerializeField] protected NPCDatabase npcDatabase; //NPC的Database
@@ -22,7 +24,6 @@ public class NPC : MonoBehaviour
     [Header("CanTouchNPCOffset")]
     public Vector3 CanTouchNPCOffset = Vector3.zero;
     protected Vector3 CanTouchNPCPos { get => transform.position + CanTouchNPCOffset; }
-
 
     public bool IsCheckNowMissionHaveReady
     {
@@ -90,7 +91,7 @@ public class NPC : MonoBehaviour
     }
 
     #region Mission Function
-    public void TouchNPC(MissionManager _missionManager, Backpack playerBackpack)
+    public void TouchNPC(MissionManager _missionManager, Backpack playerBackpack) //玩家碰到NPC
     {
         int checkMissionAmount = 0;
         //Everyone Missions Check ID 0 ~ x  if is Ready -> trigger to running...
@@ -119,8 +120,7 @@ public class NPC : MonoBehaviour
                 ExecutionDialogue(_missionManager, missions[i], MissionState.Ready);
 
                 //"紀錄" 出現資料
-                //
-
+                
                 //右下角出現「!」
                 _missionManager.OnExclamationMark(true);
 
