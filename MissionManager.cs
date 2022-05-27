@@ -1,22 +1,38 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using MoerusaGameManager;
 
 public class MissionManager : MonoBehaviour
 {
-    //MissionDatabase missionDatabase;
-
     private PlayerManager playerManager;
     private KeyCode useTouchNPCKeycode;
 
-    public float talkRadius = 3.5f;
-    public string NPCTag = "NPC";
+    public GameObject E_Tip_Prefabs;
+    private GameObject e_Tip;
 
-    public LayerMask npc_LayerMask;
+    [Range(1f,5f)]
+    public float talkRadius = 3.5f;                  //可以跟npc對話的距離
     
-    public bool isTalk{ get; private set; }   //目前正在說話 ->不能動
-    public bool checkHaveNPC { get; private set; }
+    public string NPCTag = "NPC";                    //Tag
+    public LayerMask npc_LayerMask;
+
+    
+    public bool isTalking{ get; private set; }          //目前正在說話
+    public bool checkHaveNPC {
+        get 
+        {
+            Collider[] NPCs = Physics.OverlapSphere(transform.position, talkRadius, npc_LayerMask);
+            for (int i = 0; i < NPCs.Length; i++)
+            {
+                if (NPCs[i].CompareTag(NPCTag))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
 
     [Header("Audio")]
     public Sound[] sounds;
@@ -27,29 +43,20 @@ public class MissionManager : MonoBehaviour
         useTouchNPCKeycode = playerManager.GetPlayerKeyCode("Interact").keycode;
         //Sounds
         GameManager.Instance_GameManager.Audio_InitialSounds(sounds, gameObject);
+        e_Tip = Instantiate(E_Tip_Prefabs, GameManager.Instance_GameManager.WorldSpaceCanvas.transform);       
     }
 
     void Update()
     {
         Collider[] NPCs = Physics.OverlapSphere(transform.position, talkRadius, npc_LayerMask);
-        checkHaveNPC = false;
-        for (int i = 0; i < NPCs.Length; i++)
-        {
-            if(NPCs[i].CompareTag(NPCTag))
-            {
-                checkHaveNPC = true;
-                break;
-            }
-        }
-        if (isTalk)
+        if (isTalking)
             return;
 
         if (checkHaveNPC) //In range NPC's outline well light
         {
             Transform nowTalkNPC = DecideBestDistance(NPCs).transform;
             NPC nowNPC = nowTalkNPC.GetComponent<NPC>();
-            nowNPC.isOutlineEnable = true;
-
+            nowNPC.SetNPCIsCanTouchTip(true, e_Tip);
             if (Input.GetKeyDown(useTouchNPCKeycode))
             {
                 //Sound
@@ -58,33 +65,36 @@ public class MissionManager : MonoBehaviour
                 nowNPC.TouchNPC(this, playerManager.GetBackpack);
             }
         }
-        else   //all npc outline = false
+        else   //all npc outline = false       
             GameManager.Instance_GameManager.PlayerInsideHaveNPC();
-
-        //playerManager.PlayerMoveNowType = isTalk ?  PlayerMoveType.DontMove: PlayerMoveType.CanMove;
-
-        //Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        //RaycastHit hit;
-        //if (Physics.Raycast(ray, out hit, Mathf.Infinity) && hit.collider.CompareTag(NPCTag))
-        //{
-        //    //NPC npc = hit.collider.GetComponent<NPC>();
-        //    //if (npc != null)
-        //    //{
-        //    //    npc.isOutlineEnable = true;
-        //    //    ////另一個模式是碰到就觸發
-        //    //    //if (Input.GetKeyDown(KeyCode.Mouse0))
-        //    //    //{
-        //    //    //    //Sound
-        //    //    //    playerManager.Audio_PlayAudio(sounds, "ClickNPC");
-        //    //    //    npc.TouchNPC(this, playerManager.GetBackpack);
-        //    //    //}
-        //    //}
-        //}
-        //else
-        //    GameManager.Instance_GameManager.PlayerInsideHaveNPC();
+        
+        e_Tip.SetActive(checkHaveNPC);
     }
 
-    Collider DecideBestDistance(Collider[] _index)
+
+    private void MouseCheckNPC() //使用滑鼠確認NPC與NPC互動
+    {
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        RaycastHit hit;
+        if (Physics.Raycast(ray, out hit, Mathf.Infinity) && hit.collider.CompareTag(NPCTag))
+        {
+            NPC npc = hit.collider.GetComponent<NPC>();
+            if (npc != null)
+            {
+                npc.isOutlineEnable = true;
+                if (Input.GetKeyDown(KeyCode.Mouse0))
+                {
+                    //Sound
+                    playerManager.Audio_PlayAudio(sounds, "ClickNPC");
+                    npc.TouchNPC(this, playerManager.GetBackpack);
+                }
+            }
+        }
+        else
+            GameManager.Instance_GameManager.PlayerInsideHaveNPC();
+    }
+
+    Collider DecideBestDistance(Collider[] _index) //決定離玩家最近的NPC
     {
         if (_index.Length <= 0)
             return _index[0];
@@ -115,7 +125,7 @@ public class MissionManager : MonoBehaviour
         playerManager.NowPlayerMoveType = _playermovetype;
     }
      
-    public void SetIsTalk(bool _isTalk) => isTalk = _isTalk; //Because ienumerator dont use "="
+    public void SetIsTalk(bool _isTalk) => isTalking = _isTalk; //Because ienumerator dont use "="
 
     public void SetPlayerDatabase_MContainer(Mission _mission)
     {        
@@ -130,9 +140,8 @@ public class MissionManager : MonoBehaviour
             playerManager.Audio_PlayAudio(sounds, "SuccessMission");
     }
 
-    //右下角的「!」
+    //右下角的「!」提示玩家現在有新任務
     public void OnExclamationMark(bool isCondition) => playerManager.OnExclamationMark(isCondition);
-
 
     private void OnDrawGizmos()
     {
